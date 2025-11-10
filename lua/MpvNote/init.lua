@@ -137,7 +137,7 @@ local function open_temp()
   M.mpv_command({ command = { "seek", time, "absolute" } })
   M.mpv_command({ command = { "set_property", "pause", false } })
 
-  vim.notify(string.format("Opening: %s @ %s", path, time), vim.log.levels.INFO)
+  vim.notify(string.format("Playing: %s @ %s", path, time), vim.log.levels.INFO)
 end
 
 -- get image dimensions using ffprobe
