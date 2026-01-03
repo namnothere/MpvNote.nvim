@@ -84,9 +84,16 @@ end
 
 -- parse timestamp line in format: ["path" ; time]]
 local function parse_stamp_line(line)
+	local mode = "stamp"
 	local path, time = line:match('%["(.-)"%s*;%s*(%d+%.?%d*)%]')
+
+	if not time then
+		mode = "section"
+		path, time = line:match('%["(.-)"%s*;%s*%((%d+%.?%d*:%d+%.?%d*)%)%]')
+	end
+
 	if not path or not time then
-		vim.notify('format not matched: ["path" ; time]', vim.log.levels.WARN)
+		vim.notify('format not matched: ["path" ; time] or ["path" ; (time:time)]', vim.log.levels.WARN)
 		return nil, nil
 	end
 
@@ -104,12 +111,12 @@ local function parse_stamp_line(line)
 		return nil, nil
 	end
 
-	return path, tonumber(time)
+	return path, time, mode
 end
 
 -- open media at timestamp form current line
 local function open_temp()
-	local path, time = parse_stamp_line(vim.api.nvim_get_current_line())
+	local path, time, mode = parse_stamp_line(vim.api.nvim_get_current_line())
 
 	if not path or not time then
 		vim.notify('format not matched: ["path" ; time]', vim.log.levels.WARN)
@@ -137,9 +144,20 @@ local function open_temp()
 		end
 	end
 
-	M.mpv_command({ command = { "set_property", "pause", true } })
-	M.mpv_command({ command = { "seek", time, "absolute" } })
-	M.mpv_command({ command = { "set_property", "pause", false } })
+	if mode == "stamp" then
+		time = tonumber(time)
+		M.mpv_command({ command = { "set_property", "pause", true } })
+		M.mpv_command({ command = { "seek", time, "absolute" } })
+		M.mpv_command({ command = { "set_property", "pause", false } })
+	elseif mode == "section" then
+		local time1, time2 = time:match("(%d+%.?%d*):(%d+%.?%d*)")
+		time1, time2 = tonumber(time1), tonumber(time2)
+		M.mpv_command({ command = { "set_property", "pause", true } })
+		M.mpv_command({ command = { "seek", time1, "absolute" } })
+		M.mpv_command({ command = { "set_property", "ab-loop-a", time1 } })
+		M.mpv_command({ command = { "set_property", "ab-loop-b", time2 } })
+		M.mpv_command({ command = { "set_property", "pause", false } })
+	end
 
 	vim.notify(string.format("Playing: %s @ %s", path, time), vim.log.levels.INFO)
 end
@@ -159,7 +177,14 @@ end
 
 -- show media snapshot in floating window
 local function MpvHover()
-	local path, time = parse_stamp_line(vim.api.nvim_get_current_line())
+	local path, time, mode = parse_stamp_line(vim.api.nvim_get_current_line())
+
+	if mode == "stamp" then
+		time = tonumber(time)
+	else
+		time = tonumber(time:match("(%d+%.?%d*):%d+%.?%d*"))
+	end
+
 	if not path then
 		vim.notify('format not matched: ["path" ; time]', vim.log.levels.WARN)
 		return
@@ -236,7 +261,15 @@ local function MpvHover()
 end
 
 function M.pasteImage()
-	local path, time = parse_stamp_line(vim.api.nvim_get_current_line())
+	local path, time, mode = parse_stamp_line(vim.api.nvim_get_current_line())
+	local time_num = 0.0
+
+	if mode == "stamp" then
+		time_num = tonumber(time)
+	else
+		time_num = tonumber(time:match("(%d+%.?%d*):%d+%.?%d*"))
+	end
+
 	if not path then
 		vim.notify('format not matched: ["path" ; time]', vim.log.levels.WARN)
 		return
@@ -252,7 +285,7 @@ function M.pasteImage()
 
 	-- generate png with ffmpeg
 	local ffmpeg_cmd =
-		string.format('ffmpeg -y -ss %s -i "%s" -vframes 1 -q:v 2 "%s" 2>/dev/null', time, path, image_path)
+		string.format('ffmpeg -y -ss %s -i "%s" -vframes 1 -q:v 2 "%s" 2>/dev/null', time_num, path, image_path)
 	os.execute(ffmpeg_cmd)
 
 	-- check png file
@@ -262,7 +295,12 @@ function M.pasteImage()
 		return
 	end
 
-	local output = string.format('!["%s" ; %s](%s)', path, time, image_path)
+	local output
+	if mode == "stamp" then
+		output = string.format('!["%s" ; %s](%s)', path, time, image_path)
+	else
+		output = string.format('!["%s" ; (%s)](%s)', path, time, image_path)
+	end
 
 	local row = vim.api.nvim_win_get_cursor(0)[1]
 	vim.api.nvim_buf_set_lines(0, row - 1, row, false, { output })
