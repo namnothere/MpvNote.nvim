@@ -12,12 +12,16 @@ A lightweight plugin designed for Neovim users to interact with the mpv media pl
 
 🎬 Open Timestamp: Click on a timestamp to directly launch mpv and jump to that segment.
 
+📜 Extract Subtitles: One-click parsing of subtitle files matching the current video filename.
+
 # 🧩 Timestamp Format
 
 The plugin uses a unified timestamp format:
 
 ```
 ["/path/to/video.mp4" ; 192.360]
+or
+["/path/to/video.mp4" ; (180.123:192.360)]
 ```
 
 The first field is the video path
@@ -29,6 +33,8 @@ The second field is the time (in seconds), precise to three decimal places
 ## 1. Start mpv with IPC socket control enabled
 
 `mpv --input-ipc-server=/path/to/your/socket_file "/path/to/your/video"`
+
+or set `input-ipc-server=/path/to/your/socket_file` in your `mpv.conf`
 
 The default `socket_file` is `/tmp/mpvsocket`.
 
@@ -84,7 +90,15 @@ Just toggle pause/play.
 
 Paste detected image at the current line with markdown image format.
 
-7. `MpvNote.mpv_command()`
+7. `:MpvGteSrt`
+
+Search for an SRT subtitle file that has the same name as the currently playing video and is located in the same directory, then display it using nvim’s notification system.
+
+8. `:MpvExtractSrt`
+
+Extract the SRT subtitle file that shares the same name as the currently playing video and resides in the same directory, then insert it into the current buffer in the format specified by mpvNote.
+
+9. `MpvNote.mpv_command()`
 
 Allow customize commands using `MpvNote.mpv_command()`. For Example:
 

@@ -12,12 +12,16 @@
 
 🎬 打开时间戳：点击时间戳可直接唤起 mpv 跳转播放该片段
 
+📜 提取字幕：一键解析当前视频同名字幕文件
+
 # 🧩 时间戳格式
 
 插件使用统一的时间戳格式：
 
 ```
 ["/path/to/video.mp4" ; 192.360]
+或
+["/path/to/video.mp4" ; (180.123:192.360)]
 ```
 
 第一个字段为视频路径
@@ -29,6 +33,8 @@
 ## 1. 启动 mpv 并启用 socket 控制
 
 `mpv --input-ipc-server=/path/to/your/socket_file "/path/to/your/video"`
+
+或者在 `mpv.conf` 中设置 `input-ipc-server=/path/to/your/socket_file`
 
 `socket_file` 默认为 `/tmp/mpvsocket`
 
@@ -84,7 +90,15 @@ return {
 
 在这一行使用 markdown image 格式粘贴生成的图片。
 
-7. `MpvNote.mpv_command()`
+7. `:MpvGteSrt`
+
+搜索与当前播放视频同目录下的同名 srt 字幕文件，并使用 nvim 的通知显示。
+
+8. `:MpvExtractSrt`
+
+提取与当前播放视频同目录下的同名 srt 字幕文件，并按照 mpvNote 规定的格式添加到当前 buffer 中。
+
+9. `MpvNote.mpv_command()`
 
 使用 `MpvNote.mpv_command()` 自定义命令。例如：
 
