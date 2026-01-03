@@ -57,7 +57,7 @@ local function extract_data(response)
 end
 
 -- get current playback timestamp and path from mpv
-local function get_timestamp()
+local function get_timestamp(mode)
 	local time_result = M.mpv_command({ command = { "get_property", "time-pos" }, log = false })
 	local path_result = M.mpv_command({ command = { "get_property", "path" }, log = false })
 
@@ -69,10 +69,12 @@ local function get_timestamp()
 	local time = extract_data(time_result)
 	local path = extract_data(path_result)
 
-	if path then
-		local home_dir = os.getenv("HOME")
-		if home_dir and path:sub(1, #home_dir) == home_dir then
-			path = "~" .. path:sub(#home_dir + 1)
+	if not mode then
+		if path then
+			local home_dir = os.getenv("HOME")
+			if home_dir and path:sub(1, #home_dir) == home_dir then
+				path = "~" .. path:sub(#home_dir + 1)
+			end
 		end
 	end
 
@@ -353,6 +355,19 @@ function M.setup(opts)
 	command("MpvPasteImage", function()
 		M.pasteImage()
 	end, { desc = "paste detected image" })
+
+	-- get srt path
+	command("MpvGetSrt", function()
+		local stamp = get_timestamp(1)
+		local srt = require("MpvNote.srt").find_srt_path(stamp.path)
+		vim.notify(srt, vim.log.levels.INFO)
+	end, { desc = "get srt path" })
+
+	-- extract srt
+	command("MpvExtractSrt", function()
+		local stamp = get_timestamp(1)
+		require("MpvNote.srt").extract(stamp.path)
+	end, { desc = "Extract srt to current buf" })
 end
 
 return M
