@@ -12,6 +12,8 @@ A lightweight plugin designed for Neovim users to interact with the mpv media pl
 
 🎬 Open Timestamp: Click on a timestamp to directly launch mpv and jump to that segment.
 
+▶️ Managed mpv: Open media directly from Neovim without manually configuring an mpv IPC socket.
+
 📜 Extract Subtitles: One-click parsing of subtitle files matching the current video filename.
 
 # 🧩 Timestamp Format
@@ -30,29 +32,52 @@ The second field is the time (in seconds), precise to three decimal places
 
 # 🚀 Usage
 
-## 1. Start mpv with IPC socket control enabled
+## Start mpv from Neovim
 
-`mpv --input-ipc-server=/path/to/your/socket_file "/path/to/your/video"`
+MpvNote can launch and manage its own mpv instance. No `--input-ipc-server` option or `mpv.conf` entry is required:
 
-or set `input-ipc-server=/path/to/your/socket_file` in your `mpv.conf`
+```vim
+:MpvNoteOpen ~/Videos/video.mp4
+```
 
-The default `socket_file` is `/tmp/mpvsocket`.
+The plugin creates a unique temporary Unix socket for the managed instance and connects to it automatically.
 
-## 2. Configure the plugin
+You can also use the Lua API:
 
-Using Lazy.nvim
+```lua
+require("MpvNote").open("~/Videos/video.mp4")
+```
+
+Each call creates a separate managed mpv instance with its own IPC socket. The most recently opened instance is used by timestamp commands.
+
+## Use an existing mpv instance
+
+For users who already manage mpv themselves, an explicit socket can still be configured:
+
+```lua
+opts = {
+  socket = "/tmp/mpvsocket",
+}
+```
+
+In this mode, MpvNote does not launch mpv and communicates with the configured socket instead.
+
+## Configure the plugin
+
+Using Lazy.nvim:
 
 ```lua
 return {
-  "SilverofLight/MpvNote.nvim",
+  "namnothere/MpvNote.nvim",
   lazy = true,
-  cmd = { "MpvCopyStamp", "MpvPasteStamp", "MpvOpenStamp", "MpvHover" },
+  cmd = { "MpvNoteOpen", "MpvCopyStamp", "MpvPasteStamp", "MpvOpenStamp", "MpvHover" },
   dependencies = "folke/snacks.nvim", -- optional
   opts = {
-    socket = "/tmp/mpvsocket", -- your socket file
-    clipboard_cmd = "wl-copy", -- your clipboard tool command
+    -- Optional: omit this to let MpvNote manage mpv automatically.
+    -- socket = "/tmp/mpvsocket",
+    clipboard_cmd = "wl-copy",
     width = nil,
-    height = nil, -- MpvHover's size
+    height = nil,
   },
 
   -- set your keybindings below
@@ -62,43 +87,47 @@ return {
 }
 ```
 
-## 3. Available Commands
+## 1. Available Commands
 
-1. `:MpvCopyStamp`
+1. `:MpvNoteOpen <file>`
+
+Launch a new mpv instance with automatic IPC management.
+
+2. `:MpvCopyStamp`
 
 Get the current timestamp from mpv and copy it to the clipboard.
 
-2. `:MpvPasteStamp`
+3. `:MpvPasteStamp`
 
 Get the timestamp and insert it as a new line below the current line.
 
-3. `:MpvOpenStamp`
+4. `:MpvOpenStamp`
 
 If the cursor is on a properly formatted timestamp, this command will trigger mpv to play the corresponding segment.
 
-If mpv is not running, it will be automatically launched in the background and jump to the timestamp.
+If no managed mpv instance is running, it will automatically launch one for the stamped file.
 
-4. `:MpvHover`
+5. `:MpvHover`
 
 Extract current frame with ffmpeg and display with Snacks.nvim.
 
-5. `:MpvTogglePause`
+6. `:MpvTogglePause`
 
 Just toggle pause/play.
 
-6. `:MpvPasteImage`
+7. `:MpvPasteImage`
 
 Paste detected image at the current line with markdown image format.
 
-7. `:MpvGteSrt`
+8. `:MpvGetSrt`
 
 Search for an SRT subtitle file that has the same name as the currently playing video and is located in the same directory, then display it using nvim’s notification system.
 
-8. `:MpvExtractSrt`
+9. `:MpvExtractSrt`
 
 Extract the SRT subtitle file that shares the same name as the currently playing video and resides in the same directory, then insert it into the current buffer in the format specified by mpvNote.
 
-9. `MpvNote.mpv_command()`
+10. `MpvNote.mpv_command()`
 
 Allow customize commands using `MpvNote.mpv_command()`. For Example:
 
@@ -114,7 +143,7 @@ end)
 
 Make sure the following tools are available:
 
-mpv (with --input-ipc-server enabled)
+mpv
 
 socat (for socket communication)
 
@@ -122,19 +151,21 @@ A clipboard tool (like wl-copy, pbcopy, etc.)
 
 ffmpeg (optional, for MpvHover)
 
-folke/snacks.nvim -> image (optional, for MpvHover)
+folke/snacks.nvim -> image (optional)
 
-The plugin uses the JSON IPC protocol. Ensure your mpv version supports it.
+The plugin uses the JSON IPC protocol. Managed instances have IPC enabled automatically. If you configure an external socket, ensure your mpv instance supports JSON IPC.
 
 # 📌 Example Workflow
 
 https://github.com/user-attachments/assets/db0b1ec6-065c-4c43-bd24-76317cf7e744
 
-Run `:MpvCopyStamp` at the segment you want to mark
+Run `:MpvNoteOpen ~/Videos/video.mp4` to start a managed mpv instance.
 
-Paste it into your markdown/notes using `:MpvPasteStamp`
+Run `:MpvCopyStamp` at the segment you want to mark.
 
-Move the cursor to any timestamp line and replay the clip using `:MpvOpenStamp`
+Paste it into your markdown/notes using `:MpvPasteStamp`.
+
+Move the cursor to any timestamp line and replay the clip using `:MpvOpenStamp`.
 
 # 📚 Roadmap
 
