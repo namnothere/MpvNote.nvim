@@ -29,19 +29,20 @@ local function socket_exists(socket)
 	return stat and stat.type == "socket"
 end
 
-local function cleanup_session(job_id)
+local function cleanup_session(job_id, socket)
+	-- Always clean up the socket belonging to this process, even if another
+	-- managed mpv instance has become the active instance since then.
+	if socket then
+		vim.loop.fs_unlink(socket)
+	end
+
 	if job_id and M.state.job_id ~= job_id then
 		return
 	end
 
-	local socket = M.state.socket
 	M.state.job_id = nil
 	M.state.socket = nil
 	M.state.path = nil
-
-	if socket then
-		vim.loop.fs_unlink(socket)
-	end
 end
 
 -- Execute a command in the active mpv instance via JSON IPC.
@@ -70,7 +71,7 @@ local function wait_for_mpv_socket(socket, timeout)
 			end
 		end
 
-		vim.wait(interval * 1000)
+	vim.wait(interval * 1000)
 		wait_time = wait_time + interval
 	end
 
@@ -110,7 +111,7 @@ local function start_mpv(path, args)
 		detach = false,
 		on_exit = function(_, exit_code)
 			vim.schedule(function()
-				cleanup_session(job_id)
+				cleanup_session(job_id, socket)
 				if exit_code ~= 0 then
 					vim.notify(string.format("MpvNote: mpv exited with code %d", exit_code), vim.log.levels.WARN)
 				end
@@ -119,7 +120,7 @@ local function start_mpv(path, args)
 	})
 
 	if job_id <= 0 then
-		cleanup_session()
+		cleanup_session(nil, socket)
 		vim.notify("MpvNote: failed to start mpv", vim.log.levels.ERROR)
 		return false
 	end
@@ -128,7 +129,7 @@ local function start_mpv(path, args)
 
 	if not wait_for_mpv_socket(socket, 3) then
 		vim.fn.jobstop(job_id)
-		cleanup_session(job_id)
+		cleanup_session(job_id, socket)
 		vim.notify("MpvNote: mpv IPC socket did not become available", vim.log.levels.ERROR)
 		return false
 	end
